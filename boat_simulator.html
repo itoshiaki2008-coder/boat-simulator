@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>小型船舶 主機適正出力シミュレーター</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #0a1628;
+    --navy-mid: #162040;
+    --navy-light: #1e2f55;
+    --accent: #3b82f6;
+    --accent-light: #60a5fa;
+    --teal: #0ea5e9;
+    --green: #10b981;
+    --amber: #f59e0b;
+    --red: #ef4444;
+    --text: #e8edf5;
+    --text-muted: #8899bb;
+    --border: rgba(255,255,255,0.08);
+    --border-hover: rgba(255,255,255,0.15);
+    --surface: rgba(255,255,255,0.04);
+    --surface-hover: rgba(255,255,255,0.07);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--navy);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 2rem 1rem 4rem;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(59,130,246,0.15) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 30% at 80% 80%, rgba(14,165,233,0.08) 0%, transparent 50%);
+  }
+
+  .container { max-width: 680px; margin: 0 auto; }
+
+  header { text-align: center; margin-bottom: 2.5rem; }
+  header .badge {
+    display: inline-block;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: var(--teal);
+    background: rgba(14,165,233,0.12);
+    border: 1px solid rgba(14,165,233,0.25);
+    border-radius: 100px;
+    padding: 4px 14px;
+    margin-bottom: 1rem;
+  }
+  h1 {
+    font-size: clamp(20px, 5vw, 26px);
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.4;
+    margin-bottom: 0.5rem;
+  }
+  header p {
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: var(--border-hover); }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 1.25rem;
+  }
+  .card-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: rgba(59,130,246,0.15);
+    border: 1px solid rgba(59,130,246,0.25);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+  }
+  .card-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .grid1 { margin-bottom: 12px; }
+
+  .field label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+  .field input[type=number] {
+    width: 100%;
+    height: 40px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 15px;
+    padding: 0 12px;
+    transition: border-color 0.2s, background 0.2s;
+    -moz-appearance: textfield;
+  }
+  .field input[type=number]::-webkit-inner-spin-button,
+  .field input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+  .field input[type=number]:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: rgba(59,130,246,0.08);
+  }
+
+  .toggle-group { display: flex; gap: 6px; }
+  .toggle-group input[type=radio] { display: none; }
+  .toggle-group label {
+    flex: 1;
+    text-align: center;
+    padding: 9px 0;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.18s;
+    user-select: none;
+  }
+  .toggle-group input[type=radio]:checked + label {
+    background: rgba(59,130,246,0.18);
+    border-color: var(--accent);
+    color: var(--accent-light);
+  }
+  .toggle-group label:hover { background: var(--surface-hover); }
+
+  .btn-calc {
+    width: 100%;
+    height: 52px;
+    background: var(--accent);
+    border: none;
+    border-radius: 14px;
+    color: #fff;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    transition: background 0.2s, transform 0.1s;
+    margin-top: 0.5rem;
+  }
+  .btn-calc:hover { background: #2563eb; }
+  .btn-calc:active { transform: scale(0.98); }
+
+  #results { display: none; margin-top: 1rem; animation: fadeUp 0.35s ease; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .metrics { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; margin-bottom: 1rem; }
+  .metric {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem;
+    text-align: center;
+  }
+  .metric-label { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; letter-spacing: 0.05em; }
+  .metric-value { font-family: 'DM Mono', monospace; font-size: 22px; font-weight: 500; color: #fff; }
+  .metric-unit { font-size: 12px; color: var(--text-muted); margin-left: 3px; }
+
+  .verdict {
+    border-radius: 14px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+    border: 1px solid;
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+  .verdict-icon { font-size: 22px; flex-shrink: 0; margin-top: 1px; }
+  .verdict-title { font-size: 15px; font-weight: 700; margin-bottom: 5px; }
+  .verdict-body { font-size: 13px; line-height: 1.7; }
+
+  .verdict.ok  { background: rgba(16,185,129,0.1);  border-color: rgba(16,185,129,0.3); }
+  .verdict.ok  .verdict-title { color: #34d399; }
+  .verdict.ok  .verdict-body  { color: #a7f3d0; }
+
+  .verdict.warn { background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.3); }
+  .verdict.warn .verdict-title { color: #fcd34d; }
+  .verdict.warn .verdict-body  { color: #fde68a; }
+
+  .verdict.ng  { background: rgba(239,68,68,0.1);   border-color: rgba(239,68,68,0.3); }
+  .verdict.ng  .verdict-title { color: #f87171; }
+  .verdict.ng  .verdict-body  { color: #fecaca; }
+
+  .detail-table { width: 100%; border-collapse: collapse; }
+  .detail-table td { padding: 10px 0; font-size: 14px; border-bottom: 1px solid var(--border); }
+  .detail-table tr:last-child td { border-bottom: none; }
+  .detail-table .dt-label { color: var(--text-muted); }
+  .detail-table .dt-value { text-align: right; font-family: 'DM Mono', monospace; font-weight: 500; color: var(--text); }
+
+  footer { text-align: center; margin-top: 2.5rem; font-size: 11px; color: var(--text-muted); line-height: 1.8; }
+
+  @media (max-width: 480px) {
+    .grid2 { grid-template-columns: 1fr; }
+    .metrics { grid-template-columns: repeat(3, minmax(0,1fr)); }
+    .metric-value { font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="badge">附属書 [12] — 検査細則</div>
+    <h1>小型船舶<br>主機適正出力シミュレーター</h1>
+    <p>船体情報とエンジン情報を入力して判定してください</p>
+  </header>
+
+  <!-- 船体情報 -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon">⛵</div>
+      <div class="card-title">船体情報</div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>船の長さ (m)</label><input type="number" id="L" value="6" step="0.1" min="1"></div>
+      <div class="field"><label>トランサムの幅 (m)</label><input type="number" id="Bt" value="1.5" step="0.1" min="0.1"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>トランサム高さ (m)</label><input type="number" id="Th" value="0.51" step="0.01" min="0"></div>
+      <div class="field"><label>船底勾配 (度)</label><input type="number" id="Tk" value="7.2" step="0.1" min="0"></div>
+    </div>
+    <div class="grid1">
+      <div class="field">
+        <label>遠隔操縦装置</label>
+        <div class="toggle-group">
+          <input type="radio" name="Te" id="Te1" value="1" checked><label for="Te1">あり</label>
+          <input type="radio" name="Te" id="Te0" value="0"><label for="Te0">なし</label>
+        </div>
+      </div>
+    </div>
+    <div class="grid1">
+      <div class="field">
+        <label>フルトランサム</label>
+        <div class="toggle-group">
+          <input type="radio" name="Tf" id="Tf1" value="1" checked><label for="Tf1">あり</label>
+          <input type="radio" name="Tf" id="Tf0" value="0"><label for="Tf0">なし</label>
+        </div>
+      </div>
+    </div>
+    <div class="grid1">
+      <div class="field">
+        <label>モーターウェル</label>
+        <div class="toggle-group">
+          <input type="radio" name="Tm" id="Tm0" value="0" checked><label for="Tm0">なし</label>
+          <input type="radio" name="Tm" id="Tm1" value="1"><label for="Tm1">あり</label>
+        </div>
+      </div>
+    </div>
+    <div class="grid1">
+      <div class="field">
+        <label>機種</label>
+        <div class="toggle-group">
+          <input type="radio" name="Ks" id="Ks1" value="1" checked><label for="Ks1">船外機</label>
+          <input type="radio" name="Ks" id="Ks2" value="2"><label for="Ks2">船内外機</label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- エンジン情報 -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon">⚙️</div>
+      <div class="card-title">エンジン情報</div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>適正出力 (PS)</label><input type="number" id="Pa" value="40" step="1" min="1"></div>
+      <div class="field"><label>換装エンジン出力 (PS)</label><input type="number" id="Pe" value="60" step="1" min="1"></div>
+    </div>
+  </div>
+
+  <button class="btn-calc" onclick="calc()">判 定 す る</button>
+
+  <!-- 結果 -->
+  <div id="results">
+    <div class="metrics">
+      <div class="metric">
+        <div class="metric-label">ボート係数 Fa</div>
+        <div class="metric-value" id="r-fa">—</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">船型区分</div>
+        <div class="metric-value" id="r-type">—</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">基準値</div>
+        <div class="metric-value" id="r-kijun">—<span class="metric-unit">PS</span></div>
+      </div>
+    </div>
+
+    <div class="verdict" id="verdict">
+      <div class="verdict-icon" id="v-icon"></div>
+      <div>
+        <div class="verdict-title" id="v-title"></div>
+        <div class="verdict-body" id="v-body"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">📋</div>
+        <div class="card-title">詳細データ</div>
+      </div>
+      <table class="detail-table">
+        <tr><td class="dt-label">適正出力</td><td class="dt-value" id="d-pa">—</td></tr>
+        <tr><td class="dt-label">換装エンジン出力</td><td class="dt-value" id="d-pe">—</td></tr>
+        <tr><td class="dt-label">超過PS</td><td class="dt-value" id="d-over">—</td></tr>
+        <tr><td class="dt-label">許容超過範囲</td><td class="dt-value" id="d-kyoyo">—</td></tr>
+        <tr><td class="dt-label">基準値（計算値）</td><td class="dt-value" id="d-raw">—</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <footer>
+    本ツールは附属書[12]（小型船舶検査細則）に基づく参考計算です。<br>
+    最終判断は必ず日本小型船舶検査機構にご確認ください。
+  </footer>
+
+</div>
+<script>
+function getRadio(name) {
+  var el = document.querySelector('[name=' + name + ']:checked');
+  return el ? parseFloat(el.value) : 0;
+}
+
+function calc() {
+  var L  = parseFloat(document.getElementById('L').value)  || 0;
+  var Bt = parseFloat(document.getElementById('Bt').value) || 0;
+  var Th = parseFloat(document.getElementById('Th').value) || 0;
+  var Tk = parseFloat(document.getElementById('Tk').value) || 0;
+  var Te = getRadio('Te');
+  var Tf = getRadio('Tf');
+  var Ks = getRadio('Ks');
+  var Pa = parseFloat(document.getElementById('Pa').value) || 0;
+  var Pe = parseFloat(document.getElementById('Pe').value) || 0;
+
+  /* ボート係数 */
+  var Fa = Math.round(L * Bt * 100) / 100;
+  var Fc = Math.min(Fa, 40);
+
+  /* 船型区分 */
+  var shipType;
+  if (Te === 1 && Th >= 0.50 && Tf === 1) {
+    shipType = Tk >= 15 ? 1 : 2;
+  } else if (Tk >= 7 && Tf === 1) {
+    shipType = 3;
+  } else {
+    shipType = 4;
+  }
+
+  /* 基準値（生） */
+  var raw;
+  if (Fa >= 4.5) {
+    if (shipType === 1) { raw = 21.5 * Fc - 81; }
+    else if (shipType === 2) { raw = 12.8 * Fc - 40; }
+    else if (shipType === 3) { raw = Fa < 15 ? 8.6 * Fc - 23 : 110; }
+    else                     { raw = Fa < 15 ? 5.4 * Fc - 14 :  70; }
+  } else if (Fa >= 4.1) { raw = shipType <= 3 ? 20   : 15;  }
+  else if (Fa >= 3.8)   { raw = shipType <= 3 ? 15   : 10;  }
+  else if (Fa >= 3.5)   { raw = shipType <= 3 ? 10   : 7.5; }
+  else if (Fa >= 3.3)   { raw = 7.5; }
+  else if (Fa >= 3.0)   { raw = 5;   }
+  else                  { raw = 4;   }
+
+  /* 船内外機補正 */
+  if (Ks === 2) raw = raw * 1.55;
+
+  /* 5の整数倍に繰り上げ */
+  var kijun = Math.ceil(raw / 5) * 5;
+
+  /* 超過・許容 */
+  var over = Pe - Pa;
+  var kyoyo;
+  if      (Pa < 10)  { kyoyo = 3;  }
+  else if (Pa < 40)  { kyoyo = 6;  }
+  else if (Pa < 100) { kyoyo = 10; }
+  else               { kyoyo = Math.ceil(Pa * 0.1 / 5) * 5; }
+
+  /* --- 表示 --- */
+  var typeNames = ['AI型', 'AII型', 'BI型', 'BII型'];
+  document.getElementById('r-fa').textContent    = Fa.toFixed(2);
+  document.getElementById('r-type').textContent  = typeNames[shipType - 1];
+  document.getElementById('r-kijun').innerHTML   = kijun + '<span class="metric-unit">PS</span>';
+  document.getElementById('d-pa').textContent    = Pa + ' PS';
+  document.getElementById('d-pe').textContent    = Pe + ' PS';
+  document.getElementById('d-over').textContent  = (over > 0 ? '+' : '') + over + ' PS';
+  document.getElementById('d-kyoyo').textContent = '±' + kyoyo + ' PS';
+  document.getElementById('d-raw').textContent   = raw.toFixed(1) + ' PS（繰上前）';
+
+  /* 判定 */
+  var v  = document.getElementById('verdict');
+  var vi = document.getElementById('v-icon');
+  var vt = document.getElementById('v-title');
+  var vb = document.getElementById('v-body');
+  v.className = 'verdict';
+
+  if (over <= 0) {
+    v.classList.add('ok');
+    vi.textContent = '✓';
+    vt.textContent = 'オーバーパワーではありません';
+    vb.textContent = '換装エンジン（' + Pe + 'PS）は適正出力（' + Pa + 'PS）以下です。新造時海上試運転のみで適正出力が決定できます。';
+  } else if (over <= kyoyo) {
+    v.classList.add('warn');
+    vi.textContent = '⚠';
+    vt.textContent = 'オーバーパワー：表の範囲内';
+    vb.textContent = '超過 ' + over + 'PS は許容範囲（' + kyoyo + 'PS）内です。注意書き貼付・船舶検査手帳への記載のみで搭載可能です。';
+  } else {
+    v.classList.add('ng');
+    vi.textContent = '✕';
+    vt.textContent = 'オーバーパワー：表の範囲超え';
+    vb.textContent = '超過 ' + over + 'PS が許容範囲（' + kyoyo + 'PS）を超えています。安全性確認試験・制限速力の決定・速力計の設置が必要です。';
+  }
+
+  document.getElementById('results').style.display = 'block';
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+</script>
+</body>
+</html>
